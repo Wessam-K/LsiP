@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Places Intelligence Dashboard</title>
+    <style>
+        :root {
+            --bg: #0a0c10;
+            --surface: #13161d;
+            --surface2: #1c2029;
+            --surface3: #242833;
+            --border: #2a2e3a;
+            --accent: #6c63ff;
+            --accent-glow: rgba(108,99,255,0.25);
+            --accent2: #4ecdc4;
+            --accent2-glow: rgba(78,205,196,0.25);
+            --green: #22c55e;
+            --red: #ef4444;
+            --yellow: #eab308;
+            --orange: #f97316;
+            --text: #f0f0f0;
+            --text2: #8b92a5;
+            --text3: #555b6e;
+            --radius: 12px;
+            --radius-sm: 8px;
+            --shadow: 0 4px 24px rgba(0,0,0,0.3);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--surface) 0%, #171a24 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 14px 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(12px);
+        }
+        .header h1 {
+            font-size: 18px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            letter-spacing: -0.3px;
+        }
+        .header h1 span.icon { font-size: 24px; }
+        .header-right { display: flex; align-items: center; gap: 12px; }
+        .health-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .health-badge.ok { background: rgba(34,197,94,0.12); color: var(--green); border: 1px solid rgba(34,197,94,0.2); }
+        .health-badge.err { background: rgba(239,68,68,0.12); color: var(--red); border: 1px solid rgba(239,68,68,0.2); }
+        .health-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+        .health-badge.ok .health-dot { background: var(--green); box-shadow: 0 0 6px var(--green); }
+        .health-badge.err .health-dot { background: var(--red); }
+
+        /* Layout */
+        .container { display: flex; min-height: calc(100vh - 52px); }
+
+        /* Sidebar */
+        .sidebar {
+            width: 310px;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            padding: 18px 16px;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+        .sidebar-section { margin-bottom: 20px; }
+        .sidebar h2 {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text3);
+            margin-bottom: 14px;
+            font-weight: 700;
+        }
+
+        /* Forms */
+        .form-group { margin-bottom: 10px; }
+        .form-group label {
+            display: block;
+            font-size: 11px;
+            color: var(--text2);
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 8px 10px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 13px;
+            outline: none;
+            transition: border 0.2s, box-shadow 0.2s;
+        }
+        .form-group input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px var(--accent-glow);
+        }
+        .form-row { display: flex; gap: 8px; }
+        .form-row .form-group { flex: 1; }
+
+        .btn {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent) 0%, #5547e0 100%);
+            color: white;
+            box-shadow: 0 2px 12px var(--accent-glow);
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 20px var(--accent-glow); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .btn-secondary {
+            background: var(--surface2);
+            color: var(--text);
+            border: 1px solid var(--border);
+            margin-top: 6px;
+        }
+        .btn-secondary:hover { border-color: var(--accent); background: var(--surface3); }
+        .btn-export {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            color: white;
+            box-shadow: 0 2px 12px rgba(5,150,105,0.25);
+            margin-top: 8px;
+        }
+        .btn-export:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(5,150,105,0.3); }
+        .btn-sm { padding: 6px 12px; font-size: 11px; width: auto; }
+
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .checkbox-row input[type="checkbox"] {
+            accent-color: var(--accent);
+            width: 14px;
+            height: 14px;
+        }
+        .checkbox-row label { font-size: 12px; color: var(--text2); margin: 0; }
+
+        .divider {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 16px 0;
+        }
+
+        /* Main content */
+        .main { flex: 1; padding: 18px 20px; overflow-y: auto; }
+
+        /* Toolbar row */
+        .toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .toolbar-left { display: flex; gap: 4px; }
+        .toolbar-right { display: flex; gap: 8px; align-items: center; }
+        .result-count {
+            font-size: 12px;
+            color: var(--text2);
+            padding: 6px 12px;
+            background: var(--surface);
+            border-radius: 6px;
+            border: 1px solid var(--border);
+        }
+        .result-count strong { color: var(--text); }
+
+        /* Tab nav */
+        .tabs { display: flex; gap: 2px; }
+        .tab {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            color: var(--text2);
+            transition: all 0.15s;
+            border: 1px solid transparent;
+            background: none;
+        }
+        .tab.active {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+        .tab:hover:not(.active) { color: var(--text); background: var(--surface2); border-color: var(--border); }
+
+        /* Tab panels */
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* Stats bar */
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 12px 14px;
+            transition: border-color 0.2s;
+        }
+        .stat-card:hover { border-color: var(--accent); }
+        .stat-card .label { font-size: 10px; color: var(--text3); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+        .stat-card .value { font-size: 22px; font-weight: 800; line-height: 1.1; }
+        .stat-card .sub { font-size: 10px; color: var(--text3); margin-top: 2px; }
+
+        /* Table */
+        .table-wrap {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            max-height: calc(100vh - 280px);
+            overflow-y: auto;
+        }
+        table { width: 100%; border-collapse: collapse; }
+        th {
+            text-align: left;
+            padding: 10px 12px;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.7px;
+            color: var(--text3);
+            background: var(--surface2);
+            border-bottom: 1px solid var(--border);
+            font-weight: 700;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+        td {
+            padding: 9px 12px;
+            font-size: 12.5px;
+            border-bottom: 1px solid rgba(42,46,58,0.5);
+            max-width: 180px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        tr { transition: background 0.1s; }
+        tr:hover td { background: rgba(108,99,255,0.04); }
+        tr:nth-child(even) td { background: rgba(255,255,255,0.01); }
+        tr:nth-child(even):hover td { background: rgba(108,99,255,0.04); }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+        .badge-brand { background: rgba(108,99,255,0.15); color: var(--accent); border: 1px solid rgba(108,99,255,0.2); }
+        .badge-local { background: rgba(78,205,196,0.12); color: var(--accent2); border: 1px solid rgba(78,205,196,0.2); }
+
+        .rating-stars { color: var(--yellow); font-size: 11px; }
+        .rating-num { color: var(--text); font-weight: 600; }
+
+        /* Score bar */
+        .score-cell { min-width: 70px; }
+        .score-bar { width: 100%; height: 5px; background: var(--surface3); border-radius: 3px; overflow: hidden; margin-bottom: 2px; }
+        .score-bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+        .score-label { font-size: 10px; font-weight: 700; }
+
+        /* Address cell */
+        .addr-cell { max-width: 160px; color: var(--text2); font-size: 11.5px; }
+
+        /* Heatmap grid */
+        .heatmap-grid {
+            display: grid; gap: 2px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+        }
+        .heatmap-cell {
+            aspect-ratio: 1; border-radius: 3px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 10px; font-weight: 600; cursor: pointer; transition: transform 0.1s;
+        }
+        .heatmap-cell:hover { transform: scale(1.3); z-index: 10; }
+
+        /* Loading */
+        .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.2); border-top-color: white; border-radius: 50%; animation: spin 0.5s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Progress bar */
+        .search-progress { display: none; margin-top: 8px; }
+        .search-progress.active { display: block; }
+        .progress-bar { width: 100%; height: 6px; background: var(--surface3); border-radius: 3px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 3px; transition: width 0.3s ease; width: 0%; }
+        .progress-text { font-size: 10px; color: var(--text2); margin-top: 5px; text-align: center; }
+        .progress-pct { font-weight: 700; color: var(--accent); }
+        .badge-fb { background: rgba(24,119,242,0.15); color: #1877f2; border: 1px solid rgba(24,119,242,0.2); }
+        .badge-ig { background: rgba(225,48,108,0.15); color: #e1306c; border: 1px solid rgba(225,48,108,0.2); }
+        .badge-social { background: rgba(255,255,255,0.08); color: var(--text2); border: 1px solid var(--border); }
+
+        /* Toast */
+        .toast-container { position: fixed; top: 16px; right: 16px; z-index: 1000; display: flex; flex-direction: column; gap: 6px; }
+        .toast {
+            padding: 10px 16px; border-radius: 8px; font-size: 12px; font-weight: 500;
+            animation: slideIn 0.25s ease; max-width: 360px; box-shadow: var(--shadow);
+            display: flex; align-items: center; gap: 8px;
+        }
+        .toast-success { background: rgba(34,197,94,0.95); color: white; }
+        .toast-error { background: rgba(239,68,68,0.95); color: white; }
+        .toast-info { background: rgba(108,99,255,0.95); color: white; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } }
+
+        /* Empty state */
+        .empty-state { text-align: center; padding: 50px 20px; color: var(--text3); }
+        .empty-state .icon { font-size: 40px; margin-bottom: 12px; opacity: 0.6; }
+        .empty-state p { font-size: 13px; }
+
+        /* Detail modal */
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 500; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+        .modal-overlay.show { display: flex; }
+        .modal {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            width: 620px; max-height: 82vh; overflow-y: auto; padding: 22px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+        .modal h3 { font-size: 16px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; }
+        .modal .close-btn { background: none; border: none; color: var(--text2); font-size: 18px; cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: background 0.15s; }
+        .modal .close-btn:hover { background: var(--surface2); }
+        .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .detail-item { background: var(--surface2); padding: 10px 12px; border-radius: 6px; }
+        .detail-item .label { font-size: 10px; color: var(--text3); margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+        .detail-item .value { font-size: 13px; word-break: break-all; }
+        .detail-item.full { grid-column: 1 / -1; }
+
+        /* Responsive */
+        @media (max-width: 1100px) {
+            .stats-bar { grid-template-columns: repeat(3, 1fr); }
+        }
+        @media (max-width: 900px) {
+            .container { flex-direction: column; }
+            .sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border); }
+            .stats-bar { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1><span class="icon">📍</span> Places Intelligence Dashboard</h1>
+    <div class="header-right">
+        <div class="health-badge" id="healthBadge">
+            <span class="health-dot"></span>
+            <span id="healthText">Checking...</span>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-section">
+            <h2>🔍 Search Places</h2>
+            <form id="searchForm">
+                <div class="form-group">
+                    <label>Search Query</label>
+                    <input type="text" id="searchQuery" placeholder="e.g. clothing stores" required>
+                </div>
+                <div class="form-group">
+                    <label>Location (lat, lng)</label>
+                    <input type="text" id="searchLocation" placeholder="31.2001, 29.9187">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Radius (km)</label>
+                        <input type="number" id="searchRadius" placeholder="20" min="0.1" max="50" step="0.5" value="5">
+                    </div>
+                    <div class="form-group">
+                        <label>Max Pages / Region</label>
+                        <input type="number" id="maxPages" value="3" min="1" max="10">
+                    </div>
+                </div>
+                <div class="checkbox-row">
+                    <input type="checkbox" id="enrichCheck" checked>
+                    <label for="enrichCheck">Enrich (emails, website, scoring)</label>
+                </div>
+                <button type="submit" class="btn btn-primary" id="searchBtn">
+                    <span>⚡ Search &amp; Ingest</span>
+                </button>
+                <div class="search-progress" id="searchProgress">
+                    <div class="progress-bar"><div class="progress-bar-fill" id="progressBarFill"></div></div>
+                    <div class="progress-text" id="progressText">Preparing grid search...</div>
+                </div>
+            </form>
+        </div>
+
+        <hr class="divider">
+
+        <div class="sidebar-section">
+            <h2>📤 Export Data</h2>
+            <button type="button" class="btn btn-export" id="exportCsvBtn" onclick="exportCSV()">
+                📄 Export to CSV
+            </button>
+        </div>
+
+        <hr class="divider">
+
+        <div class="sidebar-section">
+            <h2>📊 Heatmap</h2>
+            <form id="heatmapForm">
+                <div class="form-group">
+                    <label>Category</label>
+                    <input type="text" id="hmCategory" placeholder="restaurants" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Lat Min</label>
+                        <input type="number" step="0.001" id="hmLatMin" placeholder="25.05">
+                    </div>
+                    <div class="form-group">
+                        <label>Lat Max</label>
+                        <input type="number" step="0.001" id="hmLatMax" placeholder="25.15">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Lng Min</label>
+                        <input type="number" step="0.001" id="hmLngMin" placeholder="55.10">
+                    </div>
+                    <div class="form-group">
+                        <label>Lng Max</label>
+                        <input type="number" step="0.001" id="hmLngMax" placeholder="55.20">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Grid Size (degrees)</label>
+                    <input type="number" step="0.001" id="hmGrid" value="0.01" min="0.001" max="1">
+                </div>
+                <button type="submit" class="btn btn-secondary">Generate Heatmap</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main -->
+    <div class="main">
+        <!-- Stats -->
+        <div class="stats-bar" id="statsBar">
+            <div class="stat-card">
+                <div class="label">Total Places</div>
+                <div class="value" id="statTotal">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Brands</div>
+                <div class="value" id="statBrands" style="color:var(--accent)">0</div>
+                <div class="sub">chains / franchises</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Local Shops</div>
+                <div class="value" id="statLocal" style="color:var(--accent2)">0</div>
+                <div class="sub">independent</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Avg Rating</div>
+                <div class="value" id="statRating" style="color:var(--yellow)">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Emails Found</div>
+                <div class="value" id="statEmails" style="color:var(--green)">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">With Website</div>
+                <div class="value" id="statWebsite">0</div>
+            </div>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="toolbar">
+            <div class="toolbar-left tabs">
+                <button class="tab active" data-tab="results">📋 Results</button>
+                <button class="tab" data-tab="heatmap">🗺️ Heatmap</button>
+                <button class="tab" data-tab="scores">🏆 Top Locations</button>
+            </div>
+            <div class="toolbar-right">
+                <div class="result-count" id="resultCount">
+                    Showing <strong>0</strong> places
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Tab -->
+        <div class="tab-panel active" id="panel-results">
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width:30px">#</th>
+                            <th>Name</th>
+                            <th>Location</th>
+                            <th>Type</th>
+                            <th>Rating</th>
+                            <th>Reviews</th>
+                            <th>Phone</th>
+                            <th>Web</th>
+                            <th>Emails</th>
+                            <th>Score</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsBody"></tbody>
+                </table>
+            </div>
+            <div class="empty-state" id="emptyState">
+                <div class="icon">🌍</div>
+                <p>Enter a search query and location to find places</p>
+            </div>
+        </div>
+
+        <!-- Heatmap Tab -->
+        <div class="tab-panel" id="panel-heatmap">
+            <div class="empty-state" id="heatmapEmpty">
+                <div class="icon">🗺️</div>
+                <p>Configure and generate a heatmap from the sidebar</p>
+            </div>
+            <div id="heatmapContainer" style="display:none;">
+                <h3 style="margin-bottom:12px;font-size:15px;" id="heatmapTitle">Competitor Density</h3>
+                <div class="heatmap-grid" id="heatmapGrid"></div>
+                <div style="display:flex;justify-content:space-between;margin-top:10px;font-size:10px;color:var(--text3);">
+                    <span>Low density</span>
+                    <div style="display:flex;gap:2px;">
+                        <span style="width:14px;height:10px;background:#1a1d27;border-radius:2px;display:inline-block;"></span>
+                        <span style="width:14px;height:10px;background:#1a4a3e;border-radius:2px;display:inline-block;"></span>
+                        <span style="width:14px;height:10px;background:#4ecdc4;border-radius:2px;display:inline-block;"></span>
+                        <span style="width:14px;height:10px;background:#eab308;border-radius:2px;display:inline-block;"></span>
+                        <span style="width:14px;height:10px;background:#ef4444;border-radius:2px;display:inline-block;"></span>
+                    </div>
+                    <span>High density</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scores Tab -->
+        <div class="tab-panel" id="panel-scores">
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Name</th>
+                            <th>Address</th>
+                            <th>Class</th>
+                            <th>Composite</th>
+                            <th>Demand</th>
+                            <th>Competition</th>
+                            <th>Access</th>
+                            <th>Rating</th>
+                        </tr>
+                    </thead>
+                    <tbody id="scoresBody"></tbody>
+                </table>
+            </div>
+            <button class="btn btn-secondary" style="max-width:200px;margin-top:12px;" id="loadScoresBtn">Load Top Locations</button>
+        </div>
+    </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" id="detailModal">
+    <div class="modal">
+        <h3>
+            <span id="modalTitle">Place Details</span>
+            <button class="close-btn" onclick="closeModal()">✕</button>
+        </h3>
+        <div class="detail-grid" id="modalBody"></div>
+    </div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+const API = '/api/v1';
+let allPlaces = [];
+
+// ── Helpers ─────────────────────────────────────────────
+function toast(msg, type = 'info') {
+    const c = document.getElementById('toastContainer');
+    const t = document.createElement('div');
+    t.className = `toast toast-${type}`;
+    t.textContent = msg;
+    c.appendChild(t);
+    setTimeout(() => t.remove(), 4000);
+}
+
+function esc(s) {
+    if (!s) return '';
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+}
+
+function scoreColor(s) {
+    if (s >= 0.7) return 'var(--green)';
+    if (s >= 0.4) return 'var(--yellow)';
+    return 'var(--red)';
+}
+
+function truncate(s, n) {
+    if (!s) return '';
+    return s.length > n ? s.substring(0, n) + '…' : s;
+}
+
+const SOCIAL_PATTERNS = [
+    { re: /facebook\.com|fb\.com|fb\.me/i,   label: 'Facebook', icon: 'f', cls: 'badge-fb' },
+    { re: /instagram\.com/i,                  label: 'Instagram', icon: 'ig', cls: 'badge-ig' },
+    { re: /twitter\.com|x\.com/i,             label: 'X/Twitter', icon: '𝕏', cls: 'badge-social' },
+    { re: /tiktok\.com/i,                     label: 'TikTok', icon: '♪', cls: 'badge-social' },
+    { re: /linkedin\.com/i,                   label: 'LinkedIn', icon: 'in', cls: 'badge-social' },
+];
+
+function classifyUrl(url) {
+    if (!url) return null;
+    for (const s of SOCIAL_PATTERNS) {
+        if (s.re.test(url)) return s;
+    }
+    return { re: null, label: 'Website', icon: '🌐', cls: '' };
+}
+
+function isSocialMedia(url) {
+    if (!url) return false;
+    return SOCIAL_PATTERNS.some(s => s.re.test(url));
+}
+
+// ── Health check ────────────────────────────────────────
+async function checkHealth() {
+    const badge = document.getElementById('healthBadge');
+    const text = document.getElementById('healthText');
+    try {
+        const r = await fetch('/health');
+        const d = await r.json();
+        badge.className = 'health-badge ok';
+        text.textContent = `${d.status} · DB: ${d.database}`;
+    } catch {
+        badge.className = 'health-badge err';
+        text.textContent = 'Offline';
+    }
+}
+checkHealth();
+setInterval(checkHealth, 30000);
+
+// ── Tabs ────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(`panel-${tab.dataset.tab}`).classList.add('active');
+    });
+});
+
+// ── Search (SSE with real-time progress) ────────────────
+document.getElementById('searchForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('searchBtn');
+    const progress = document.getElementById('searchProgress');
+    const progressBar = document.getElementById('progressBarFill');
+    const progressText = document.getElementById('progressText');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Searching...';
+    progress.classList.add('active');
+    progressBar.style.width = '0%';
+    progressText.innerHTML = 'Preparing grid search...';
+
+    const radiusKm = parseFloat(document.getElementById('searchRadius').value) || null;
+
+    const body = {
+        query: document.getElementById('searchQuery').value,
+        location: document.getElementById('searchLocation').value || null,
+        radius_km: radiusKm,
+        max_pages: parseInt(document.getElementById('maxPages').value) || 3,
+        enrich: document.getElementById('enrichCheck').checked,
+    };
+
+    try {
+        const r = await fetch(`${API}/search/stream`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        if (!r.ok) {
+            const err = await r.json();
+            throw new Error(err.detail || r.statusText);
+        }
+
+        // Read SSE stream
+        const reader = r.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+
+            // Process complete SSE messages (double newline delimited)
+            const parts = buffer.split('\n\n');
+            buffer = parts.pop(); // keep incomplete part
+
+            for (const part of parts) {
+                if (!part.trim()) continue;
+                const lines = part.trim().split('\n');
+                let eventType = 'message';
+                let eventData = '';
+                for (const line of lines) {
+                    if (line.startsWith('event: ')) eventType = line.slice(7);
+                    else if (line.startsWith('data: ')) eventData = line.slice(6);
+                }
+
+                if (eventType === 'progress') {
+                    const prog = JSON.parse(eventData);
+                    const pct = Math.round((prog.current / prog.total) * 100);
+                    progressBar.style.width = pct + '%';
+                    progressText.innerHTML = `Scanning region <span class="progress-pct">${prog.current}/${prog.total}</span> — found <span class="progress-pct">${prog.unique}</span> unique places`;
+                } else if (eventType === 'result') {
+                    const data = JSON.parse(eventData);
+                    allPlaces = data.places;
+                    renderResults(data);
+                    progressBar.style.width = '100%';
+                    toast(`Found ${data.total_results} places across grid search`, 'success');
+                } else if (eventType === 'error') {
+                    const err = JSON.parse(eventData);
+                    throw new Error(err.detail);
+                }
+            }
+        }
+    } catch (err) {
+        toast(`Search failed: ${err.message}`, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span>⚡ Search &amp; Ingest</span>';
+        setTimeout(() => progress.classList.remove('active'), 1500);
+    }
+});
+
+function renderResults(data) {
+    // Stats
+    document.getElementById('statTotal').textContent = data.total_results;
+    const brands = data.places.filter(p => p.classification === 'brand').length;
+    const locals = data.places.filter(p => p.classification === 'local').length;
+    document.getElementById('statBrands').textContent = brands;
+    document.getElementById('statLocal').textContent = locals;
+
+    const ratings = data.places.filter(p => p.rating).map(p => p.rating);
+    const avgR = ratings.length ? (ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1) : '-';
+    document.getElementById('statRating').textContent = avgR;
+
+    const emailCount = data.places.reduce((sum, p) => sum + (p.emails ? p.emails.length : 0), 0);
+    document.getElementById('statEmails').textContent = emailCount;
+
+    const websiteCount = data.places.filter(p => p.website).length;
+    document.getElementById('statWebsite').textContent = websiteCount;
+
+    document.getElementById('resultCount').innerHTML = `Showing <strong>${data.total_results}</strong> places`;
+
+    // Table
+    const tbody = document.getElementById('resultsBody');
+    const empty = document.getElementById('emptyState');
+    if (data.places.length === 0) {
+        tbody.innerHTML = '';
+        empty.style.display = 'block';
+        return;
+    }
+    empty.style.display = 'none';
+
+    tbody.innerHTML = data.places.map((p, i) => {
+        const ratingHtml = p.rating
+            ? `<span class="rating-stars">${'★'.repeat(Math.round(p.rating))}</span> <span class="rating-num">${p.rating}</span>`
+            : '<span style="color:var(--text3)">—</span>';
+
+        const scoreHtml = p.location_score != null
+            ? `<div class="score-cell"><div class="score-bar"><div class="score-bar-fill" style="width:${(p.location_score*100).toFixed(0)}%;background:${scoreColor(p.location_score)}"></div></div><span class="score-label" style="color:${scoreColor(p.location_score)}">${(p.location_score*100).toFixed(0)}%</span></div>`
+            : '<span style="color:var(--text3)">—</span>';
+
+        const addrShort = truncate(p.formatted_address, 30);
+
+        return `<tr onclick="showDetail(${i})" style="cursor:pointer">
+            <td style="color:var(--text3);font-size:11px">${i + 1}</td>
+            <td title="${esc(p.name)}"><strong>${esc(truncate(p.name, 28))}</strong></td>
+            <td class="addr-cell" title="${esc(p.formatted_address)}">${addrShort ? esc(addrShort) : '—'}</td>
+            <td>${p.classification ? `<span class="badge badge-${p.classification}">${p.classification}</span>` : '<span style="color:var(--text3)">—</span>'}</td>
+            <td>${ratingHtml}</td>
+            <td style="color:var(--text2)">${p.user_ratings_total != null ? p.user_ratings_total.toLocaleString() : '—'}</td>
+            <td style="font-size:11px;color:var(--text2)">${p.formatted_phone_number ? esc(p.formatted_phone_number) : '—'}</td>
+            <td>${(() => {
+                if (!p.website) return '<span style="color:var(--text3)">—</span>';
+                const u = classifyUrl(p.website);
+                if (isSocialMedia(p.website)) return `<a href="${esc(p.website)}" target="_blank" onclick="event.stopPropagation()" style="text-decoration:none"><span class="badge ${u.cls}">${u.icon} ${u.label}</span></a>`;
+                return `<a href="${esc(p.website)}" target="_blank" style="color:var(--accent);font-size:11px" onclick="event.stopPropagation()">🌐 Site</a>`;
+            })()}</td>
+            <td>${p.emails && p.emails.length ? `<span style="color:var(--green)">📧 ${p.emails.length}</span>` : '<span style="color:var(--text3)">—</span>'}</td>
+            <td>${scoreHtml}</td>
+        </tr>`;
+    }).join('');
+}
+
+// ── Export CSV ──────────────────────────────────────────
+async function exportCSV() {
+    toast('Generating CSV...', 'info');
+    try {
+        const r = await fetch(`${API}/export/csv?limit=2000`);
+        if (!r.ok) throw new Error('Export failed');
+        const blob = await r.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const cd = r.headers.get('Content-Disposition');
+        const match = cd && cd.match(/filename=(.+)/);
+        a.download = match ? match[1] : 'places_export.csv';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+        toast('CSV downloaded!', 'success');
+    } catch (err) {
+        toast(`Export failed: ${err.message}`, 'error');
+    }
+}
+
+// ── Detail modal ────────────────────────────────────────
+function showDetail(idx) {
+    const p = allPlaces[idx];
+    if (!p) return;
+    document.getElementById('modalTitle').textContent = p.name;
+    const body = document.getElementById('modalBody');
+
+    const items = [
+        { l: 'Place ID', v: p.place_id },
+        { l: 'Address', v: p.formatted_address, full: true },
+        { l: 'Latitude', v: p.latitude },
+        { l: 'Longitude', v: p.longitude },
+        { l: 'Rating', v: p.rating ? `${'★'.repeat(Math.round(p.rating))} ${p.rating} (${(p.user_ratings_total || 0).toLocaleString()} reviews)` : '—' },
+        { l: 'Phone', v: p.formatted_phone_number || '—' },
+        { l: 'Website', v: p.website ? (() => {
+            const u = classifyUrl(p.website);
+            const tag = isSocialMedia(p.website) ? `<span class="badge ${u.cls}" style="margin-right:6px">${u.icon} ${u.label}</span>` : '🌐 ';
+            return `${tag}<a href="${esc(p.website)}" target="_blank" style="color:var(--accent);word-break:break-all">${esc(p.website)}</a>`;
+        })() : '—', html: true },
+        { l: 'Classification', v: p.classification ? `${p.classification} (${(p.classification_confidence*100).toFixed(0)}%)` : '—' },
+        { l: 'Location Score', v: p.location_score != null ? `${(p.location_score*100).toFixed(1)}%` : 'Not scored yet' },
+        { l: 'Business Status', v: p.business_status || '—' },
+        { l: 'Price Level', v: p.price_level != null ? '💲'.repeat(p.price_level + 1) : '—' },
+    ];
+
+    if (p.types && p.types.length) {
+        items.push({ l: 'Categories', v: p.types.join(', '), full: true });
+    }
+    if (p.emails && p.emails.length) {
+        items.push({ l: 'Emails', v: p.emails.map(e => `📧 ${e.email} <span style="color:var(--text3)">(${e.source || '?'})</span>`).join('<br>'), full: true, html: true });
+    }
+    if (p.enrichment) {
+        items.push({ l: 'Homepage Status', v: p.enrichment.homepage_status_code || '—' });
+        items.push({ l: 'Homepage Title', v: p.enrichment.homepage_title || '—' });
+        if (p.enrichment.contact_page_url) {
+            items.push({ l: 'Contact Page', v: `<a href="${esc(p.enrichment.contact_page_url)}" target="_blank" style="color:var(--accent)">${esc(p.enrichment.contact_page_url)}</a>`, html: true, full: true });
+        }
+    }
+    if (p.opening_hours && p.opening_hours.weekday_text) {
+        items.push({ l: 'Hours', v: p.opening_hours.weekday_text.join('<br>'), full: true, html: true });
+    }
+
+    body.innerHTML = items.map(it => `
+        <div class="detail-item ${it.full ? 'full' : ''}">
+            <div class="label">${it.l}</div>
+            <div class="value">${it.html ? it.v : esc(String(it.v ?? '—'))}</div>
+        </div>
+    `).join('');
+
+    document.getElementById('detailModal').classList.add('show');
+}
+
+function closeModal() {
+    document.getElementById('detailModal').classList.remove('show');
+}
+document.getElementById('detailModal').addEventListener('click', (e) => {
+    if (e.target.id === 'detailModal') closeModal();
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+// ── Heatmap ─────────────────────────────────────────────
+document.getElementById('heatmapForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const body = {
+        category: document.getElementById('hmCategory').value,
+        lat_min: parseFloat(document.getElementById('hmLatMin').value),
+        lat_max: parseFloat(document.getElementById('hmLatMax').value),
+        lng_min: parseFloat(document.getElementById('hmLngMin').value),
+        lng_max: parseFloat(document.getElementById('hmLngMax').value),
+        grid_size: parseFloat(document.getElementById('hmGrid').value),
+    };
+
+    try {
+        const r = await fetch(`${API}/heatmap`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        if (!r.ok) throw new Error((await r.json()).detail);
+        const data = await r.json();
+        renderHeatmap(data, body);
+        document.querySelector('[data-tab="heatmap"]').click();
+        toast(`Heatmap: ${data.total_cells} cells`, 'success');
+    } catch (err) {
+        toast(`Heatmap failed: ${err.message}`, 'error');
+    }
+});
+
+function renderHeatmap(data, params) {
+    document.getElementById('heatmapEmpty').style.display = 'none';
+    document.getElementById('heatmapContainer').style.display = 'block';
+    document.getElementById('heatmapTitle').textContent = `Competitor Density: ${params.category}`;
+
+    const grid = document.getElementById('heatmapGrid');
+    const cells = data.cells;
+    if (!cells.length) {
+        grid.innerHTML = '<div class="empty-state"><p>No data for this area</p></div>';
+        return;
+    }
+
+    const lats = [...new Set(cells.map(c => c.grid_lat))].sort((a, b) => b - a);
+    const lngs = [...new Set(cells.map(c => c.grid_lng))].sort((a, b) => a - b);
+    const cols = lngs.length;
+
+    grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+    const maxCount = Math.max(...cells.map(c => c.place_count), 1);
+
+    const lookup = {};
+    cells.forEach(c => { lookup[`${c.grid_lat},${c.grid_lng}`] = c; });
+
+    grid.innerHTML = '';
+    lats.forEach(lat => {
+        lngs.forEach(lng => {
+            const cell = lookup[`${lat},${lng}`];
+            const count = cell ? cell.place_count : 0;
+            const intensity = count / maxCount;
+            const color = heatColor(intensity);
+            const div = document.createElement('div');
+            div.className = 'heatmap-cell';
+            div.style.background = color;
+            div.style.color = intensity > 0.5 ? '#000' : 'var(--text3)';
+            div.textContent = count || '';
+            div.title = `(${lat.toFixed(3)}, ${lng.toFixed(3)}): ${count} places${cell && cell.avg_rating ? `, avg ★${cell.avg_rating}` : ''}`;
+            grid.appendChild(div);
+        });
+    });
+}
+
+function heatColor(t) {
+    if (t === 0) return 'var(--surface2)';
+    if (t < 0.25) return '#1a4a3e';
+    if (t < 0.5) return '#4ecdc4';
+    if (t < 0.75) return '#eab308';
+    return '#ef4444';
+}
+
+// ── Top Locations ───────────────────────────────────────
+document.getElementById('loadScoresBtn').addEventListener('click', async () => {
+    try {
+        const r = await fetch(`${API}/top-locations?limit=50`);
+        if (!r.ok) throw new Error((await r.json()).detail);
+        const data = await r.json();
+        renderScores(data.locations);
+        toast(`Loaded ${data.total} top locations`, 'success');
+    } catch (err) {
+        toast(`Failed: ${err.message}`, 'error');
+    }
+});
+
+function renderScores(locations) {
+    const tbody = document.getElementById('scoresBody');
+    if (!locations.length) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:40px">No scored locations yet. Run a search with enrichment first.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = locations.map((l, i) => `
+        <tr>
+            <td style="color:var(--text3)">${i + 1}</td>
+            <td><strong>${esc(truncate(l.name, 25))}</strong></td>
+            <td class="addr-cell" title="${esc(l.address)}">${esc(truncate(l.address, 30))}</td>
+            <td>${l.classification ? `<span class="badge badge-${l.classification}">${l.classification}</span>` : '—'}</td>
+            <td><strong style="color:${scoreColor(l.composite_score)}">${(l.composite_score * 100).toFixed(0)}%</strong></td>
+            <td style="color:var(--text2)">${(l.demand_score * 100).toFixed(0)}%</td>
+            <td style="color:var(--text2)">${(l.competition_score * 100).toFixed(0)}%</td>
+            <td style="color:var(--text2)">${(l.accessibility_score * 100).toFixed(0)}%</td>
+            <td style="color:var(--text2)">${(l.rating_score * 100).toFixed(0)}%</td>
+        </tr>
+    `).join('');
+}
+
+// ── Auto-load stored places on page load ────────────────
+async function loadExistingPlaces() {
+    try {
+        const r = await fetch(`${API}/places?limit=200`);
+        if (r.ok) {
+            const places = await r.json();
+            if (places.length) {
+                allPlaces = places;
+                renderResults({ total_results: places.length, places });
+            }
+        }
+    } catch {}
+}
+loadExistingPlaces();
+</script>
+</body>
+</html>
