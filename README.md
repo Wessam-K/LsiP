@@ -53,7 +53,7 @@ alembic upgrade head
 uvicorn app.main:app --reload --port 8000
 ```
 
-Go to http://localhost:8000
+Go to http://localhost:8000 and you should see the dashboard.
 
 ## Getting a Google API key
 
