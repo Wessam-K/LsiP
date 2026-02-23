@@ -1,6 +1,8 @@
 """
 Stage 5 — Location Scoring Engine: Compute composite location quality scores
 based on demand signals, competition, accessibility, and ratings.
+
+Weights can be adjusted depending on the use case.
 """
 
 from __future__ import annotations
