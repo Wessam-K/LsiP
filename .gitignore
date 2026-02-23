@@ -47,5 +47,8 @@ desktop.ini
 *.log
 logs/
 
+# Docker volumes
+data/
+
 # Docker
 docker-compose.override.yml
